@@ -81,10 +81,6 @@ python app.py
 
 - **Backend** : Python / Flask
 - **Frontend** : HTML5, CSS3, JavaScript
-- **Visualisation** : Plotly.js, Leaflet.js
-- **Icons** : Font Awesome 6
 - **ML** : scikit-learn, SHAP
 
-## 👨‍💻 Auteur
 
-Projet de fin d'études en Intelligence Artificielle
