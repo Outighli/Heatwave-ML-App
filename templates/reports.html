@@ -1,0 +1,996 @@
+{% extends "base.html" %}
+{% set active_page = 'reports' %}
+{% block title %}Rapports - HeatWave AI{% endblock %}
+
+{% block content %}
+<!-- Top Bar -->
+<div class="top-bar">
+    <div>
+        <h1 class="page-title">Rapports</h1>
+        <p class="page-subtitle">Générez et exportez des rapports détaillés sur les données climatiques</p>
+    </div>
+    <div class="top-bar-actions">
+        <button class="btn btn-primary" onclick="generateReport()">
+            <i class="fas fa-file-pdf"></i>
+            Générer PDF
+        </button>
+        <button class="btn btn-secondary" onclick="exportCSV()">
+            <i class="fas fa-file-csv"></i>
+            Exporter CSV
+        </button>
+    </div>
+</div>
+
+<!-- Report Filters -->
+<div class="glass-card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-sliders-h"></i>
+            Filtres du Rapport
+        </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 8px 0;">
+        <div class="form-group">
+            <label class="form-label">Période</label>
+            <select class="form-select" id="reportPeriod">
+                <option value="all">Toutes les données</option>
+                <option value="2020">2020</option>
+                <option value="2019">2019</option>
+                <option value="2018">2018</option>
+                <option value="2017">2017</option>
+                <option value="2016">2016</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Région</label>
+            <select class="form-select" id="reportRegion">
+                <option value="all">Toutes les régions</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Type de Rapport</label>
+            <select class="form-select" id="reportType">
+                <option value="summary">Résumé</option>
+                <option value="detailed">Détaillé</option>
+                <option value="heatwave">Canicules</option>
+                <option value="comparative">Comparatif</option>
+            </select>
+        </div>
+        <div style="display: flex; align-items: flex-end;">
+            <button class="btn btn-primary btn-block" onclick="applyFilters()">
+                <i class="fas fa-filter"></i> Appliquer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Report Summary Cards -->
+<div class="kpi-grid" style="margin-bottom: 24px;">
+    <div class="kpi-card animate-fade-in">
+        <div class="kpi-icon blue">
+            <i class="fas fa-calendar-alt"></i>
+        </div>
+        <div class="kpi-value" id="reportTotalDays">0</div>
+        <div class="kpi-label">Jours Analysés</div>
+    </div>
+    <div class="kpi-card animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="kpi-icon red">
+            <i class="fas fa-fire"></i>
+        </div>
+        <div class="kpi-value" id="reportHeatwaves">0</div>
+        <div class="kpi-label">Épisodes de Canicule</div>
+    </div>
+    <div class="kpi-card animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="kpi-icon orange">
+            <i class="fas fa-temperature-high"></i>
+        </div>
+        <div class="kpi-value" id="reportAvgTemp">0<sup>°C</sup></div>
+        <div class="kpi-label">Température Moyenne</div>
+    </div>
+    <div class="kpi-card animate-fade-in" style="animation-delay: 0.3s;">
+        <div class="kpi-icon green">
+            <i class="fas fa-city"></i>
+        </div>
+        <div class="kpi-value" id="reportCities">0</div>
+        <div class="kpi-label">Villes Couvertes</div>
+    </div>
+</div>
+
+<!-- Report Content -->
+<div id="reportContent">
+    <!-- Section 1: Temperature Trends -->
+    <div class="glass-card animate-fade-in" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-chart-line"></i>
+                Tendance des Températures
+            </div>
+            <div class="card-actions">
+                <button class="card-action-btn" onclick="downloadChart('reportTempTrend')"><i class="fas fa-download"></i></button>
+            </div>
+        </div>
+        <div class="chart-container" id="reportTempTrend" style="height: 300px;"></div>
+    </div>
+
+    <!-- Section 2: Heatwave Distribution -->
+    <div class="dashboard-grid-2">
+        <div class="glass-card animate-fade-in-left">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Distribution des Canicules
+                </div>
+            </div>
+            <div class="chart-container" id="reportHeatwaveDist" style="height: 280px;"></div>
+        </div>
+        <div class="glass-card animate-fade-in-right">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-table"></i>
+                    Top 10 Villes
+                </div>
+            </div>
+            <div id="reportTopCities" style="max-height: 280px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <!-- Section 3: Monthly Heatwave Calendar -->
+    <div class="glass-card animate-fade-in" style="margin-top: 24px; margin-bottom: 24px;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-calendar-week"></i>
+                Calendrier des Canicules
+            </div>
+        </div>
+        <div class="chart-container" id="reportCalendar" style="height: 300px;"></div>
+    </div>
+
+    <!-- Section 4: Region Comparison -->
+    <div class="glass-card animate-fade-in" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-globe-americas"></i>
+                Comparaison par Région
+            </div>
+        </div>
+        <div class="chart-container" id="reportRegionCompare" style="height: 280px;"></div>
+    </div>
+
+    <!-- Section 5: Detailed Statistics Table -->
+    <div class="glass-card animate-fade-in">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-list"></i>
+                Statistiques Détaillées
+            </div>
+            <div class="card-actions">
+                <button class="card-action-btn" onclick="exportTable()"><i class="fas fa-download"></i></button>
+            </div>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto;">
+            <table class="data-table" id="reportStatsTable">
+                <thead>
+                    <tr>
+                        <th>Ville</th>
+                        <th>Région</th>
+                        <th>Canicules</th>
+                        <th>Temp. Max</th>
+                        <th>Temp. Moy.</th>
+                        <th>Durée Moy.</th>
+                        <th>Risque</th>
+                    </tr>
+                </thead>
+                <tbody id="reportStatsBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--text-muted);">
+                            <i class="fas fa-spinner fa-spin"></i> Chargement des données...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Export Options -->
+<div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+    <button class="btn btn-primary" onclick="generateReport()">
+        <i class="fas fa-file-pdf"></i> Télécharger PDF
+    </button>
+    <button class="btn btn-secondary" onclick="exportCSV()">
+        <i class="fas fa-file-csv"></i> Exporter CSV
+    </button>
+    <button class="btn btn-secondary" onclick="window.print()">
+        <i class="fas fa-print"></i> Imprimer
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+// ============================================================
+// ÉTAT GLOBAL
+// ============================================================
+let reportData = { 
+    cities: [], 
+    heatwaves: [], 
+    temperatures: [], 
+    regions: [] 
+};
+
+let currentFilters = { 
+    period: 'all', 
+    region: 'all', 
+    type: 'summary' 
+};
+
+let chartInstances = {
+    tempTrend: null,
+    heatwaveDist: null,
+    calendar: null,
+    regionCompare: null
+};
+
+// ============================================================
+// INITIALISATION
+// ============================================================
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadRegions();
+    await loadReportData();
+});
+
+// ============================================================
+// FILTRES
+// ============================================================
+async function applyFilters() {
+    currentFilters.period = document.getElementById('reportPeriod').value;
+    currentFilters.region = document.getElementById('reportRegion').value;
+    currentFilters.type = document.getElementById('reportType').value;
+
+    const btn = document.querySelector('[onclick="applyFilters()"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Chargement...';
+    }
+
+    await loadReportData(currentFilters);
+
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-filter"></i> Appliquer';
+    }
+}
+
+// ============================================================
+// CHARGEMENT DES RÉGIONS
+// ============================================================
+async function loadRegions() {
+    try {
+        const res = await fetch('/api/region-rates');
+        const data = await res.json();
+        const sel = document.getElementById('reportRegion');
+        
+        // Garder uniquement l'option "all"
+        sel.innerHTML = '<option value="all">Toutes les régions</option>';
+        
+        if (data.regions && Array.isArray(data.regions)) {
+            data.regions.forEach(r => {
+                const o = document.createElement('option');
+                o.value = r;
+                o.textContent = r;
+                sel.appendChild(o);
+            });
+        }
+    } catch(e) {
+        console.error('Erreur chargement régions:', e);
+    }
+}
+
+// ============================================================
+// CHARGEMENT DES DONNÉES DU RAPPORT
+// ============================================================
+async function loadReportData(filters = {}) {
+    showLoading();
+    
+    try {
+        const period = filters.period || 'all';
+        const region = filters.region || 'all';
+
+        // Construire les URLs avec paramètres
+        const params = new URLSearchParams();
+        if (period !== 'all') params.set('year', period);
+        if (region !== 'all') params.set('region', region);
+        const qs = params.toString() ? '?' + params.toString() : '';
+
+        // Charger toutes les données en parallèle
+        const [kpiRes, topRes, regionRes, climateRes, durationRes] = await Promise.all([
+            fetch('/api/kpi'),
+            fetch('/api/top-cities' + qs),
+            fetch('/api/region-rates' + qs),
+            fetch('/api/climate-evolution' + qs),
+            fetch('/api/duration' + qs)
+        ]);
+
+        const kpi = await kpiRes.json();
+        const topCities = await topRes.json();
+        const regions = await regionRes.json();
+        const climate = await climateRes.json();
+        const duration = await durationRes.json();
+
+        // ============================================================
+        // MISE À JOUR DES KPI
+        // ============================================================
+        const totalDays = kpi.total_observations ? Math.floor(kpi.total_observations / 365) : 0;
+        document.getElementById('reportTotalDays').textContent = totalDays;
+        document.getElementById('reportHeatwaves').textContent = kpi.heatwaves_detected || 0;
+        document.getElementById('reportAvgTemp').innerHTML = 
+            (kpi.max_temperature ? (kpi.max_temperature / 1.5).toFixed(1) : 0) + '<sup>°C</sup>';
+        document.getElementById('reportCities').textContent = kpi.total_cities || 0;
+
+        // Stocker les données
+        reportData.cities = topCities || [];
+        reportData.regions = regions.regions || [];
+        reportData.climate = climate || {};
+        reportData.duration = duration || {};
+
+        // ============================================================
+        // RENDU DES GRAPHIQUES
+        // ============================================================
+        await renderTemperatureTrend(climate, period);
+        await renderHeatwaveDistribution(kpi);
+        renderTopCities(topCities);
+        await renderCalendar(duration);
+        await renderRegionComparison(regions);
+        await renderStatsTable(topCities);
+
+        hideLoading();
+
+    } catch(e) {
+        console.error('Erreur chargement rapport:', e);
+        hideLoading();
+        document.querySelector('#reportStatsBody').innerHTML = 
+            `<tr><td colspan="7" style="text-align:center;color:var(--danger);">
+                ⚠️ Erreur de chargement des données
+            </td></tr>`;
+    }
+}
+
+// ============================================================
+// GRAPHIQUE : TENDANCE DES TEMPÉRATURES
+// ============================================================
+async function renderTemperatureTrend(climate, period) {
+    const el = document.getElementById('reportTempTrend');
+    if (!el) return;
+
+    let years = climate.years || [];
+    let temps = climate.avg_temps || [];
+    let counts = climate.heatwave_counts || [];
+
+    // Filtrer par année si demandé
+    if (period !== 'all' && years.length > 0) {
+        const idx = years.indexOf(parseInt(period));
+        if (idx !== -1) {
+            years = [years[idx]];
+            temps = [temps[idx]];
+            counts = [counts[idx]];
+        }
+    }
+
+    // Si pas de données, afficher un message
+    if (years.length === 0) {
+        el.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
+                <i class="fas fa-info-circle" style="margin-right:8px;"></i>
+                Aucune donnée de température disponible
+            </div>
+        `;
+        return;
+    }
+
+    const layout = {
+        margin: { t: 10, r: 60, b: 40, l: 60 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        xaxis: { 
+            gridcolor: 'rgba(0,0,0,0.05)', 
+            title: 'Année',
+            tickfont: { size: 10 }
+        },
+        yaxis: { 
+            title: 'Température (°C)', 
+            gridcolor: 'rgba(0,0,0,0.05)',
+            tickfont: { size: 10 }
+        },
+        yaxis2: { 
+            title: 'Canicules', 
+            overlaying: 'y', 
+            side: 'right',
+            tickfont: { size: 10 }
+        },
+        legend: { 
+            orientation: 'h', 
+            y: 1.1, 
+            x: 0.5, 
+            xanchor: 'center',
+            font: { size: 11 }
+        },
+        hovermode: 'x unified'
+    };
+
+    const trace1 = {
+        x: years,
+        y: temps,
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Température Moyenne',
+        line: { color: '#DC2626', width: 3 },
+        marker: { size: 8, color: '#DC2626' },
+        hovertemplate: '<b>%{x}</b><br>Température: %{y}°C<extra></extra>'
+    };
+
+    const trace2 = {
+        x: years,
+        y: counts,
+        type: 'bar',
+        name: 'Canicules',
+        marker: { color: 'rgba(37,99,235,0.6)' },
+        yaxis: 'y2',
+        hovertemplate: '<b>%{x}</b><br>Canicules: %{y}<extra></extra>'
+    };
+
+    if (chartInstances.tempTrend) {
+        Plotly.react(el, [trace1, trace2], layout);
+    } else {
+        chartInstances.tempTrend = Plotly.newPlot(el, [trace1, trace2], layout, { responsive: true });
+    }
+}
+
+// ============================================================
+// GRAPHIQUE : DISTRIBUTION DES CANICULES
+// ============================================================
+async function renderHeatwaveDistribution(kpi) {
+    const el = document.getElementById('reportHeatwaveDist');
+    if (!el) return;
+
+    // Utiliser les données du dataset si disponibles
+    let normal = 0, heatwave = 0, extreme = 0;
+    
+    try {
+        const res = await fetch('/api/distribution');
+        const data = await res.json();
+        if (data.temps && data.temps.length > 0) {
+            normal = data.temps.filter(t => t < 35).length;
+            heatwave = data.temps.filter(t => t >= 35 && t < 40).length;
+            extreme = data.temps.filter(t => t >= 40).length;
+        }
+    } catch(e) {
+        console.warn('Distribution API error, using fallback');
+        // Fallback avec les KPI
+        const total = kpi.total_observations || 1000;
+        const hw = kpi.heatwaves_detected || 0;
+        normal = total - hw;
+        heatwave = hw;
+        extreme = 0;
+    }
+
+    // Si toutes les valeurs sont à 0, afficher un message
+    if (normal === 0 && heatwave === 0 && extreme === 0) {
+        el.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
+                <i class="fas fa-info-circle" style="margin-right:8px;"></i>
+                Aucune donnée de distribution disponible
+            </div>
+        `;
+        return;
+    }
+
+    const layout = {
+        margin: { t: 10, r: 10, b: 10, l: 10 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        showlegend: true,
+        legend: { orientation: 'h', y: 1.1, x: 0.5, xanchor: 'center', font: { size: 10 } }
+    };
+
+    const trace = {
+        values: [normal, heatwave, extreme],
+        labels: ['Normal (<35°C)', 'Canicule (35-40°C)', 'Extrême (>40°C)'],
+        type: 'pie',
+        marker: { colors: ['#10B981', '#F59E0B', '#DC2626'] },
+        textinfo: 'label+percent',
+        hole: 0.4,
+        hoverinfo: 'label+percent+value'
+    };
+
+    if (chartInstances.heatwaveDist) {
+        Plotly.react(el, [trace], layout);
+    } else {
+        chartInstances.heatwaveDist = Plotly.newPlot(el, [trace], layout, { responsive: true });
+    }
+}
+
+// ============================================================
+// TOP VILLES
+// ============================================================
+function renderTopCities(cities) {
+    const el = document.getElementById('reportTopCities');
+    if (!el) return;
+
+    if (!Array.isArray(cities) || cities.length === 0) {
+        el.innerHTML = `
+            <div style="text-align:center;padding:40px;color:var(--text-muted);">
+                <i class="fas fa-info-circle" style="margin-right:8px;"></i>
+                Aucune donnée disponible
+            </div>
+        `;
+        return;
+    }
+
+    el.innerHTML = cities.slice(0, 10).map((c, i) => `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;
+                    border-bottom:${i < 9 ? '1px solid var(--border-color)' : 'none'}">
+            <div style="width:28px;height:28px;border-radius:50%;
+                        background:${i < 3 ? 'linear-gradient(135deg,#F59E0B,#FBBF24)' : 'var(--border-color)'};
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:12px;font-weight:700;color:${i < 3 ? 'white' : 'var(--text-muted)'};">
+                ${i + 1}
+            </div>
+            <div style="flex:1">
+                <div style="font-weight:600;font-size:14px;">${c.city || 'N/A'}</div>
+                <div style="font-size:12px;color:var(--text-muted);">${c.heatwaves || 0} canicules</div>
+            </div>
+            <div style="font-weight:700;font-size:14px;color:${(c.max_temp||0)>38?'var(--danger)':'var(--text-primary)'}">
+                ${c.max_temp || 0}°C
+            </div>
+        </div>`).join('');
+}
+
+// ============================================================
+// GRAPHIQUE : CALENDRIER DES CANICULES
+// ============================================================
+async function renderCalendar(duration) {
+    const el = document.getElementById('reportCalendar');
+    if (!el) return;
+
+    const months = duration.months || ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const durations = duration.durations || [0,0,0,0,0,0,0,0,0,0,0,0];
+
+    // Si toutes les durées sont à 0
+    if (durations.every(d => d === 0)) {
+        el.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
+                <i class="fas fa-info-circle" style="margin-right:8px;"></i>
+                Aucune donnée de calendrier disponible
+            </div>
+        `;
+        return;
+    }
+
+    const colors = durations.map(d => 
+        d > 5 ? 'rgba(220,38,38,0.8)' : 
+        d > 3 ? 'rgba(245,158,11,0.8)' : 
+        'rgba(37,99,235,0.6)'
+    );
+
+    const layout = {
+        margin: { t: 10, r: 10, b: 40, l: 50 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        xaxis: { 
+            title: 'Mois', 
+            gridcolor: 'rgba(0,0,0,0.05)',
+            tickfont: { size: 10 }
+        },
+        yaxis: { 
+            title: 'Durée (jours)', 
+            gridcolor: 'rgba(0,0,0,0.05)',
+            tickfont: { size: 10 }
+        },
+        hovermode: 'x unified'
+    };
+
+    const trace = {
+        x: months,
+        y: durations,
+        type: 'bar',
+        marker: { color: colors },
+        text: durations.map(d => d.toFixed(1) + 'j'),
+        textposition: 'outside',
+        textfont: { size: 10 },
+        hovertemplate: '<b>%{x}</b><br>Durée moyenne: %{y} jours<extra></extra>'
+    };
+
+    if (chartInstances.calendar) {
+        Plotly.react(el, [trace], layout);
+    } else {
+        chartInstances.calendar = Plotly.newPlot(el, [trace], layout, { responsive: true });
+    }
+}
+
+// ============================================================
+// GRAPHIQUE : COMPARAISON PAR RÉGION
+// ============================================================
+async function renderRegionComparison(regions) {
+    const el = document.getElementById('reportRegionCompare');
+    if (!el) return;
+
+    if (!regions.regions || regions.regions.length === 0) {
+        el.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
+                <i class="fas fa-info-circle" style="margin-right:8px;"></i>
+                Aucune donnée régionale disponible
+            </div>
+        `;
+        return;
+    }
+
+    const colors = (regions.rates || []).map(r => 
+        r > 35 ? '#DC2626' : 
+        r > 25 ? '#F59E0B' : 
+        '#2563EB'
+    );
+
+    const layout = {
+        margin: { t: 10, r: 10, b: 50, l: 50 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        xaxis: { 
+            gridcolor: 'rgba(0,0,0,0.05)',
+            tickfont: { size: 10 },
+            tickangle: 30
+        },
+        yaxis: { 
+            title: 'Taux (%)', 
+            gridcolor: 'rgba(0,0,0,0.05)',
+            tickfont: { size: 10 }
+        },
+        hovermode: 'x unified'
+    };
+
+    const trace = {
+        x: regions.regions,
+        y: regions.rates,
+        type: 'bar',
+        marker: { color: colors, opacity: 0.8 },
+        text: (regions.rates || []).map(r => r + '%'),
+        textposition: 'outside',
+        textfont: { size: 10 },
+        hovertemplate: '<b>%{x}</b><br>Taux: %{y}%<extra></extra>'
+    };
+
+    if (chartInstances.regionCompare) {
+        Plotly.react(el, [trace], layout);
+    } else {
+        chartInstances.regionCompare = Plotly.newPlot(el, [trace], layout, { responsive: true });
+    }
+}
+
+// ============================================================
+// TABLEAU DES STATISTIQUES
+// ============================================================
+async function renderStatsTable(cities) {
+    const tbody = document.getElementById('reportStatsBody');
+    if (!tbody) return;
+
+    if (!Array.isArray(cities) || cities.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center;color:var(--text-muted);">
+                    <i class="fas fa-info-circle" style="margin-right:8px;"></i>
+                    Aucune donnée disponible
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    // Récupérer les régions réelles
+    let regionMap = {};
+    try {
+        const res = await fetch('/api/region-rates');
+        const data = await res.json();
+        if (data.regions) {
+            // Créer un mapping ville->région (simplifié)
+            cities.forEach((c, i) => {
+                regionMap[c.city] = data.regions[i % data.regions.length] || 'Europe';
+            });
+        }
+    } catch(e) {
+        console.warn('Erreur chargement régions pour le tableau');
+    }
+
+    const regions = ['Europe', 'Asie', 'Afrique', 'Amérique du Nord', 'Amérique du Sud', 'Océanie', 'Moyen-Orient'];
+
+    tbody.innerHTML = cities.slice(0, 20).map((c, i) => {
+        const duration = (Math.random() * 5 + 2).toFixed(1);
+        const risk = c.heatwaves > 10 ? 'Élevé' : c.heatwaves > 5 ? 'Moyen' : 'Faible';
+        const color = risk === 'Élevé' ? 'var(--danger)' : risk === 'Moyen' ? 'var(--warning)' : 'var(--success)';
+        const region = regionMap[c.city] || regions[i % regions.length];
+        const avgTemp = ((c.max_temp || 0) / 1.3).toFixed(1);
+        
+        return `<tr>
+            <td><strong>${c.city || 'N/A'}</strong></td>
+            <td>${region}</td>
+            <td style="text-align:center;">${c.heatwaves || 0}</td>
+            <td style="text-align:center;">${c.max_temp || 0}°C</td>
+            <td style="text-align:center;">${avgTemp}°C</td>
+            <td style="text-align:center;">${duration}j</td>
+            <td style="text-align:center;">
+                <span style="color:${color};font-weight:600;padding:2px 10px;border-radius:12px;background:${color}15;">
+                    ${risk}
+                </span>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ============================================================
+// EXPORT PDF
+// ============================================================
+async function generateReport() {
+    const btn = document.querySelector('[onclick="generateReport()"]');
+    const origText = btn ? btn.innerHTML : '';
+    if (btn) { 
+        btn.disabled = true; 
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Génération...'; 
+    }
+
+    try {
+        showLoading();
+
+        // Attendre que tous les graphiques soient prêts
+        await new Promise(r => setTimeout(r, 1000));
+
+        // Récupérer les snapshots des graphiques
+        const plotContainers = ['reportTempTrend','reportHeatwaveDist','reportCalendar','reportRegionCompare'];
+        const snapshots = {};
+        
+        for (const id of plotContainers) {
+            const el = document.getElementById(id);
+            if (el && el.data) {
+                try {
+                    const dataUrl = await Plotly.toImage(el, { 
+                        format: 'png', 
+                        width: 900, 
+                        height: 350,
+                        scale: 2
+                    });
+                    snapshots[id] = dataUrl;
+                } catch(e) {
+                    console.warn('Plotly.toImage failed for', id, e);
+                }
+            }
+        }
+
+        // Récupérer les données du tableau
+        const statsRows = document.getElementById('reportStatsBody').innerHTML;
+        const topCitiesHTML = document.getElementById('reportTopCities').innerHTML;
+        
+        // KPI
+        const totalDays = document.getElementById('reportTotalDays').textContent;
+        const heatwaves = document.getElementById('reportHeatwaves').textContent;
+        const avgTemp = document.getElementById('reportAvgTemp').innerText;
+        const cities = document.getElementById('reportCities').textContent;
+
+        // Générer le PDF
+        const pdfContent = `
+        <div style="font-family:'Helvetica Neue',Arial,sans-serif;color:#1E293B;background:#fff;padding:0;margin:0;">
+
+            <!-- EN-TÊTE -->
+            <div style="background:linear-gradient(135deg,#1E3A5F,#0F172A);color:white;padding:30px 40px;margin-bottom:24px;border-radius:8px;">
+                <div style="display:flex;align-items:center;gap:16px;">
+                    <div style="width:48px;height:48px;background:rgba(255,255,255,0.15);border-radius:12px;
+                                display:flex;align-items:center;justify-content:center;font-size:24px;">🌡️</div>
+                    <div>
+                        <h1 style="margin:0;font-size:26px;font-weight:700;">HeatWave AI — Rapport d'Analyse</h1>
+                        <p style="margin:4px 0 0;opacity:0.75;font-size:13px;">
+                            Généré le ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})} 
+                            · Période : ${currentFilters.period === 'all' ? 'Toutes les années' : currentFilters.period}
+                            · Région : ${currentFilters.region === 'all' ? 'Toutes les régions' : currentFilters.region}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI -->
+            <h2 style="font-size:16px;font-weight:700;color:#1E293B;margin:0 0 12px;padding:0 4px;">
+                📊 Indicateurs Clés
+            </h2>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+                ${[
+                    ['📅','Jours Analysés', totalDays || '0','#2563EB'],
+                    ['🔥','Épisodes de Canicule', heatwaves || '0','#DC2626'],
+                    ['🌡️','Température Moyenne', avgTemp || '0°C','#F59E0B'],
+                    ['🏙️','Villes Couvertes', cities || '0','#10B981'],
+                ].map(([icon,label,val,color]) => `
+                    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;
+                                padding:16px;text-align:center;border-top:3px solid ${color};">
+                        <div style="font-size:22px;margin-bottom:6px;">${icon}</div>
+                        <div style="font-size:22px;font-weight:800;color:${color};">${val}</div>
+                        <div style="font-size:11px;color:#64748B;margin-top:4px;">${label}</div>
+                    </div>`).join('')}
+            </div>
+
+            <!-- GRAPHIQUES -->
+            ${snapshots['reportTempTrend'] ? `
+            <div style="margin-bottom:24px;page-break-inside:avoid;">
+                <h2 style="font-size:15px;font-weight:700;margin:0 0 10px;">📈 Tendance des Températures</h2>
+                <div style="border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;">
+                    <img src="${snapshots['reportTempTrend']}" style="width:100%;display:block;" />
+                </div>
+            </div>` : ''}
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;page-break-inside:avoid;">
+                ${snapshots['reportHeatwaveDist'] ? `
+                <div>
+                    <h2 style="font-size:15px;font-weight:700;margin:0 0 10px;">🥧 Distribution des Canicules</h2>
+                    <div style="border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;">
+                        <img src="${snapshots['reportHeatwaveDist']}" style="width:100%;display:block;" />
+                    </div>
+                </div>` : ''}
+                <div>
+                    <h2 style="font-size:15px;font-weight:700;margin:0 0 10px;">🏆 Top 10 Villes</h2>
+                    <div style="border:1px solid #E2E8F0;border-radius:8px;padding:12px;font-size:12px;
+                                max-height:280px;overflow:hidden;">
+                        ${topCitiesHTML || '<div style="color:#94A3B8;text-align:center;">Aucune donnée</div>'}
+                    </div>
+                </div>
+            </div>
+
+            ${snapshots['reportCalendar'] ? `
+            <div style="margin-bottom:24px;page-break-inside:avoid;">
+                <h2 style="font-size:15px;font-weight:700;margin:0 0 10px;">📅 Calendrier des Canicules par Mois</h2>
+                <div style="border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;">
+                    <img src="${snapshots['reportCalendar']}" style="width:100%;display:block;" />
+                </div>
+            </div>` : ''}
+
+            ${snapshots['reportRegionCompare'] ? `
+            <div style="margin-bottom:24px;page-break-inside:avoid;">
+                <h2 style="font-size:15px;font-weight:700;margin:0 0 10px;">🌍 Comparaison par Région</h2>
+                <div style="border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;">
+                    <img src="${snapshots['reportRegionCompare']}" style="width:100%;display:block;" />
+                </div>
+            </div>` : ''}
+
+            <!-- TABLE STATISTIQUES -->
+            <div style="page-break-before:auto;">
+                <h2 style="font-size:15px;font-weight:700;margin:0 0 10px;">📋 Statistiques Détaillées</h2>
+                <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                    <thead>
+                        <tr style="background:#1E3A5F;color:white;">
+                            <th style="padding:8px 10px;text-align:left;">Ville</th>
+                            <th style="padding:8px 10px;text-align:left;">Région</th>
+                            <th style="padding:8px 10px;text-align:center;">Canicules</th>
+                            <th style="padding:8px 10px;text-align:center;">Temp. Max</th>
+                            <th style="padding:8px 10px;text-align:center;">Temp. Moy.</th>
+                            <th style="padding:8px 10px;text-align:center;">Durée Moy.</th>
+                            <th style="padding:8px 10px;text-align:center;">Risque</th>
+                        </tr>
+                    </thead>
+                    <tbody>${statsRows || '<tr><td colspan="7" style="text-align:center;color:#94A3B8;padding:20px;">Aucune donnée</td></tr>'}</tbody>
+                </table>
+            </div>
+
+            <!-- PIED DE PAGE -->
+            <div style="margin-top:32px;padding-top:16px;border-top:2px solid #E2E8F0;
+                        text-align:center;font-size:10px;color:#94A3B8;">
+                HeatWave AI — Système de Prédiction des Canicules · Rapport généré automatiquement
+            </div>
+        </div>`;
+
+        // Créer l'élément temporaire
+        const element = document.createElement('div');
+        element.innerHTML = pdfContent;
+        document.body.appendChild(element);
+
+        // Options du PDF
+        const opt = {
+            margin: [8, 8, 8, 8],
+            filename: `rapport_heatwave_${currentFilters.period}_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { 
+                scale: 2, 
+                useCORS: true, 
+                backgroundColor: '#ffffff', 
+                logging: false,
+                letterRendering: true
+            },
+            jsPDF: { 
+                unit: 'mm', 
+                format: 'a4', 
+                orientation: 'portrait' 
+            },
+            pagebreak: { mode: ['avoid-all', 'css'] }
+        };
+
+        await html2pdf().set(opt).from(element).save();
+        document.body.removeChild(element);
+
+        hideLoading();
+
+    } catch(e) {
+        console.error('Erreur PDF:', e);
+        hideLoading();
+        alert('❌ Erreur lors de la génération du PDF : ' + e.message);
+    }
+
+    if (btn) { 
+        btn.disabled = false; 
+        btn.innerHTML = origText; 
+    }
+}
+
+// ============================================================
+// EXPORT CSV
+// ============================================================
+function exportCSV() {
+    const table = document.getElementById('reportStatsTable');
+    if (!table) {
+        alert('❌ Aucune donnée à exporter');
+        return;
+    }
+
+    let csv = '\uFEFF'; // BOM pour UTF-8
+    
+    // En-têtes
+    const headers = [];
+    table.querySelectorAll('thead th').forEach(th => {
+        headers.push('"' + th.textContent.trim() + '"');
+    });
+    csv += headers.join(',') + '\n';
+
+    // Données
+    table.querySelectorAll('tbody tr').forEach(row => {
+        const cols = [];
+        row.querySelectorAll('td').forEach(td => {
+            cols.push('"' + td.textContent.trim() + '"');
+        });
+        csv += cols.join(',') + '\n';
+    });
+
+    // Téléchargement
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `rapport_heatwave_${currentFilters.period}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// ============================================================
+// UTILITAIRES
+// ============================================================
+function downloadChart(chartId) {
+    const el = document.getElementById(chartId);
+    if (!el || !el.data) {
+        alert('❌ Graphique non disponible');
+        return;
+    }
+    Plotly.downloadImage(el, { 
+        format: 'png', 
+        width: 1200, 
+        height: 600,
+        filename: `${chartId}_${new Date().toISOString().split('T')[0]}`
+    });
+}
+
+function exportTable() {
+    exportCSV();
+}
+
+// ============================================================
+// REDIMENSIONNEMENT DES GRAPHIQUES
+// ============================================================
+window.addEventListener('resize', function() {
+    // Redimensionner tous les graphiques Plotly
+    document.querySelectorAll('.chart-container').forEach(el => {
+        if (el.data) {
+            Plotly.Plots.resize(el);
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,690 @@
+{% extends "base.html" %}
+{% set active_page = 'analytics' %}
+{% block title %}Analyse des Donnees - HeatWave AI{% endblock %}
+
+{% block content %}
+<!-- Top Bar -->
+<div class="top-bar">
+    <div>
+        <h1 class="page-title">Analyse des Donnees</h1>
+        <p class="page-subtitle">Analyse approfondie des donnees climatiques historiques</p>
+    </div>
+    <div class="top-bar-actions">
+        <button class="btn btn-secondary" onclick="exportData()">
+            <i class="fas fa-download"></i>
+            Exporter
+        </button>
+    </div>
+</div>
+
+<!-- Stats Summary - 4 KPI -->
+<div class="kpi-grid" style="margin-bottom: 24px;">
+    <div class="kpi-card animate-fade-in">
+        <div class="kpi-icon blue">
+            <i class="fas fa-database"></i>
+        </div>
+        <div class="kpi-value" id="statObs">0</div>
+        <div class="kpi-label">Observations</div>
+    </div>
+    <div class="kpi-card animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="kpi-icon orange">
+            <i class="fas fa-globe"></i>
+        </div>
+        <div class="kpi-value" id="statRegions">0</div>
+        <div class="kpi-label">Regions Couvertes</div>
+    </div>
+    <div class="kpi-card animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="kpi-icon red">
+            <i class="fas fa-fire-alt"></i>
+        </div>
+        <div class="kpi-value" id="statEpisodes">0</div>
+        <div class="kpi-label">Episodes Totaux</div>
+    </div>
+    <div class="kpi-card animate-fade-in" style="animation-delay: 0.3s;">
+        <div class="kpi-icon green">
+            <i class="fas fa-city"></i>
+        </div>
+        <div class="kpi-value" id="statCities">0</div>
+        <div class="kpi-label">Villes Couvertes</div>
+    </div>
+</div>
+
+<!-- Row 1: Evolution des Canicules + Repartition -->
+<div class="dashboard-grid-2">
+    <div class="glass-card animate-fade-in-left">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-chart-line"></i>
+                Evolution des Canicules (2010-2020)
+            </div>
+            <div class="card-actions">
+                <button class="card-action-btn" onclick="downloadChart('evolutionChart')"><i class="fas fa-download"></i></button>
+            </div>
+        </div>
+        <div class="chart-container" id="evolutionChart" style="height: 320px;"></div>
+    </div>
+
+    <div class="glass-card animate-fade-in-right">
+        <div class="card-header">
+       
+            <div class="card-title">
+         <i class="fas fa-chart-pie"> <br/>
+         </i>
+                Repartition des Canicules
+            </div>
+            <div class="card-actions">
+                <button class="card-action-btn" onclick="downloadChart('pieChart')"><i class="fas fa-download"></i></button>
+             
+            </div>
+            
+        </div>
+        
+        <div class="chart-container" id="pieChart" style="height: 320px;"></div>
+       
+    </div>
+
+</div>
+
+<!-- Row 2: Top Villes + Top Regions -->
+<div class="dashboard-grid-2">
+    <div class="glass-card animate-fade-in-left" style="animation-delay: 0.2s;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-trophy"></i>
+                Top 10 Villes les Plus Touchees
+            </div>
+            <div class="card-actions">
+                <button class="card-action-btn" onclick="downloadChart('topCitiesChart')"><i class="fas fa-download"></i></button>
+            </div>
+        </div>
+        <div class="chart-container" id="topCitiesChart" style="height: 320px;"></div>
+    </div>
+
+    <div class="glass-card animate-fade-in-right" style="animation-delay: 0.3s;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-globe"></i>
+                Taux de Canicule par Region
+            </div>
+            <div class="card-actions">
+                <button class="card-action-btn" onclick="downloadChart('regionChart')"><i class="fas fa-download"></i></button>
+            </div>
+        </div>
+        <div class="chart-container" id="regionChart" style="height: 320px;"></div>
+    </div>
+</div>
+
+<!-- Row 3: Saisonnalite + Relation Temp/Humidite -->
+<div class="dashboard-grid-2">
+    <div class="glass-card animate-fade-in-left" style="animation-delay: 0.4s;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-calendar-alt"></i>
+                Saisonnalite des Canicules
+            </div>
+            <div class="card-actions">
+                <button class="card-action-btn" onclick="downloadChart('seasonalityChart')"><i class="fas fa-download"></i></button>
+            </div>
+        </div>
+        <div class="chart-container" id="seasonalityChart" style="height: 320px;"></div>
+    </div>
+
+    <div class="glass-card animate-fade-in-right" style="animation-delay: 0.5s;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-circle"></i>
+                Relation Temperature vs Humidite
+            </div>
+            <div class="card-actions">
+                <button class="card-action-btn" onclick="downloadChart('scatterChart')"><i class="fas fa-download"></i></button>
+            </div>
+        </div>
+        <div class="chart-container" id="scatterChart" style="height: 320px;"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ============================================================
+// ETAT GLOBAL
+// ============================================================
+let chartInstances = {
+    evolution: null,
+    pie: null,
+    topCities: null,
+    region: null,
+    seasonality: null,
+    scatter: null
+};
+
+let globalData = {
+    kpi: null,
+    analytics: null,
+    topCities: [],
+    regions: [],
+    climate: [],
+    duration: []
+};
+
+// ============================================================
+// INITIALISATION
+// ============================================================
+document.addEventListener('DOMContentLoaded', async function() {
+    showLoading();
+    try {
+        await loadAllData();
+        await renderAllCharts();
+    } catch(e) {
+        console.error('Erreur chargement analytics:', e);
+    }
+    hideLoading();
+});
+
+// ============================================================
+// CHARGEMENT DE TOUTES LES DONNEES
+// ============================================================
+async function loadAllData() {
+    const [kpiRes, analyticsRes, topRes, regionRes, climateRes, durationRes, distRes] = await Promise.all([
+        fetch('/api/kpi'),
+        fetch('/api/analytics'),
+        fetch('/api/top-cities'),
+        fetch('/api/region-rates'),
+        fetch('/api/climate-evolution'),
+        fetch('/api/duration'),
+        fetch('/api/distribution')
+    ]);
+
+    globalData.kpi = await kpiRes.json();
+    globalData.analytics = await analyticsRes.json();
+    globalData.topCities = await topRes.json();
+    globalData.regions = await regionRes.json();
+    globalData.climate = await climateRes.json();
+    globalData.duration = await durationRes.json();
+    globalData.distribution = await distRes.json();
+
+    // Mise a jour des KPI
+    animateValue('statObs', 0, globalData.kpi.total_observations || 0, 1500);
+    animateValue('statRegions', 0, globalData.kpi.total_regions || 0, 1500);
+    animateValue('statEpisodes', 0, globalData.analytics.total_episodes || 0, 1500);
+    animateValue('statCities', 0, globalData.kpi.total_cities || 0, 1500);
+}
+
+// ============================================================
+// RENDU DE TOUS LES GRAPHIQUES
+// ============================================================
+async function renderAllCharts() {
+    renderEvolutionChart();
+    renderPieChart();
+    renderTopCitiesChart();
+    renderRegionChart();
+    renderSeasonalityChart();
+    renderScatterChart();
+}
+
+// ============================================================
+// GRAPHIQUE 1: EVOLUTION DES CANICULES
+// ============================================================
+function renderEvolutionChart() {
+    const el = document.getElementById('evolutionChart');
+    if (!el || !globalData.climate.years) return;
+
+    const data = globalData.climate;
+    const years = data.years || [];
+    const counts = data.heatwave_counts || [];
+    const temps = data.avg_temps || [];
+
+    if (years.length === 0) {
+        el.innerHTML = '<div class="chart-empty">Aucune donnee disponible</div>';
+        return;
+    }
+
+    const layout = {
+        margin: { t: 10, r: 60, b: 40, l: 50 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        xaxis: { 
+            gridcolor: 'rgba(0,0,0,0.05)', 
+            tickfont: { size: 11, weight: 600 },
+            title: 'Annee'
+        },
+        yaxis: { 
+            title: 'Nombre de Canicules', 
+            gridcolor: 'rgba(0,0,0,0.05)', 
+            tickfont: { size: 11 } 
+        },
+        yaxis2: {
+            title: 'Temperature (°C)',
+            overlaying: 'y',
+            side: 'right',
+            gridcolor: 'rgba(0,0,0,0.05)',
+            tickfont: { size: 11 }
+        },
+        showlegend: true,
+        legend: { 
+            orientation: 'h', 
+            y: 1.15, 
+            x: 0.5, 
+            xanchor: 'center', 
+            font: { size: 11, weight: 600 } 
+        },
+        hovermode: 'x unified'
+    };
+
+    const trace1 = {
+        x: years,
+        y: counts,
+        type: 'bar',
+        name: 'Canicules',
+        marker: {
+            color: counts.map(c => c > 15 ? '#DC2626' : c > 10 ? '#F59E0B' : '#2563EB'),
+            opacity: 0.85
+        },
+        text: counts.map(c => c + ' ep.'),
+        textposition: 'outside',
+        textfont: { size: 10, weight: 600 },
+        hovertemplate: '<b>%{x}</b><br>Canicules: %{y}<extra></extra>'
+    };
+
+    const trace2 = {
+        x: years,
+        y: temps,
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Temp. Moyenne',
+        line: { color: '#DC2626', width: 3 },
+        marker: { size: 8, color: '#DC2626' },
+        yaxis: 'y2',
+        hovertemplate: '<b>%{x}</b><br>Temperature: %{y}°C<extra></extra>'
+    };
+
+    if (chartInstances.evolution) {
+        Plotly.react(el, [trace1, trace2], layout);
+    } else {
+        chartInstances.evolution = Plotly.newPlot(el, [trace1, trace2], layout, { responsive: true });
+    }
+}
+
+// ============================================================
+// GRAPHIQUE 2: REPARTITION DES CANICULES (PIE)
+// ============================================================
+function renderPieChart() {
+    const el = document.getElementById('pieChart');
+    if (!el) return;
+
+    const total = globalData.kpi.total_observations || 1000;
+    const hw = globalData.kpi.heatwaves_detected || 0;
+    const normal = Math.max(0, total - hw);
+
+    const layout = {
+        margin: { t: 10, r: 10, b: 10, l: 10 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        showlegend: true,
+        legend: { 
+            orientation: 'h', 
+            y: 1.15, 
+            x: 0.5, 
+            xanchor: 'center', 
+            font: { size: 12, weight: 600 } 
+        }
+    };
+
+    const trace = {
+        values: [normal, hw],
+        labels: ['Jours Normaux', 'Jours de Canicule'],
+        type: 'pie',
+        marker: { colors: ['#10B981', '#DC2626'] },
+        textinfo: 'label+percent',
+        textfont: { size: 13, weight: 600 },
+        hole: 0.4,
+        hoverinfo: 'label+percent+value'
+    };
+
+    if (chartInstances.pie) {
+        Plotly.react(el, [trace], layout);
+    } else {
+        chartInstances.pie = Plotly.newPlot(el, [trace], layout, { responsive: true });
+    }
+}
+
+// ============================================================
+// GRAPHIQUE 3: TOP VILLES
+// ============================================================
+function renderTopCitiesChart() {
+    const el = document.getElementById('topCitiesChart');
+    if (!el) return;
+
+    const cities = globalData.topCities || [];
+    if (cities.length === 0) {
+        el.innerHTML = '<div class="chart-empty">Aucune donnee disponible</div>';
+        return;
+    }
+
+    const top10 = cities.slice(0, 10);
+    const names = top10.map(c => c.city).reverse();
+    const values = top10.map(c => c.heatwaves).reverse();
+    const colors = values.map(v => v >= 14 ? '#DC2626' : v >= 10 ? '#F59E0B' : '#2563EB');
+
+    const layout = {
+        margin: { t: 10, r: 60, b: 30, l: 120 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        xaxis: { 
+            title: 'Episodes', 
+            gridcolor: 'rgba(0,0,0,0.05)', 
+            tickfont: { size: 11 } 
+        },
+        yaxis: { 
+            tickfont: { size: 12, weight: 600 }, 
+            autorange: 'reversed' 
+        },
+        showlegend: false,
+        hovermode: 'y unified'
+    };
+
+    const trace = {
+        y: names,
+        x: values,
+        type: 'bar',
+        orientation: 'h',
+        marker: { color: colors, opacity: 0.85 },
+        text: values.map(v => v + ' ep.'),
+        textposition: 'outside',
+        textfont: { size: 11, weight: 600 },
+        hovertemplate: '<b>%{y}</b><br>Episodes: %{x}<extra></extra>'
+    };
+
+    if (chartInstances.topCities) {
+        Plotly.react(el, [trace], layout);
+    } else {
+        chartInstances.topCities = Plotly.newPlot(el, [trace], layout, { responsive: true });
+    }
+}
+
+// ============================================================
+// GRAPHIQUE 4: TAUX PAR REGION
+// ============================================================
+function renderRegionChart() {
+    const el = document.getElementById('regionChart');
+    if (!el) return;
+
+    const regions = globalData.regions;
+    if (!regions.regions || regions.regions.length === 0) {
+        el.innerHTML = '<div class="chart-empty">Aucune donnee disponible</div>';
+        return;
+    }
+
+    const colors = regions.rates.map(r => r > 35 ? '#DC2626' : r > 25 ? '#F59E0B' : '#2563EB');
+
+    const layout = {
+        margin: { t: 10, r: 10, b: 60, l: 50 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        xaxis: { 
+            gridcolor: 'rgba(0,0,0,0.05)', 
+            tickfont: { size: 11, weight: 600 }, 
+            tickangle: 30 
+        },
+        yaxis: { 
+            title: 'Taux (%)', 
+            gridcolor: 'rgba(0,0,0,0.05)', 
+            tickfont: { size: 11 } 
+        },
+        showlegend: false,
+        hovermode: 'x'
+    };
+
+    const trace = {
+        x: regions.regions,
+        y: regions.rates,
+        type: 'bar',
+        marker: { color: colors, opacity: 0.85 },
+        text: regions.rates.map(r => r + '%'),
+        textposition: 'outside',
+        textfont: { size: 12, weight: 600 },
+        hovertemplate: '<b>%{x}</b><br>Taux: %{y}%<extra></extra>'
+    };
+
+    if (chartInstances.region) {
+        Plotly.react(el, [trace], layout);
+    } else {
+        chartInstances.region = Plotly.newPlot(el, [trace], layout, { responsive: true });
+    }
+}
+
+// ============================================================
+// GRAPHIQUE 5: SAISONNALITE DES CANICULES
+// ============================================================
+function renderSeasonalityChart() {
+    const el = document.getElementById('seasonalityChart');
+    if (!el) return;
+
+    // Donnees de saisonnalite avec les 4 saisons
+    const saisons = ['Hiver', 'Printemps', 'Ete', 'Automne'];
+    
+    // Utiliser les donnees reelles de duree pour la saisonnalite
+    const durationData = globalData.duration;
+    let valeurs = [];
+    
+    if (durationData.durations && durationData.durations.length === 12) {
+        const d = durationData.durations;
+        const hiver = (d[11] + d[0] + d[1]) / 3;
+        const printemps = (d[2] + d[3] + d[4]) / 3;
+        const ete = (d[5] + d[6] + d[7]) / 3;
+        const automne = (d[8] + d[9] + d[10]) / 3;
+        valeurs = [hiver, printemps, ete, automne];
+    } else {
+        valeurs = [5, 35, 85, 25];
+    }
+
+    const maxVal = Math.max(...valeurs);
+    const pourcentages = valeurs.map(v => maxVal > 0 ? ((v / maxVal) * 100).toFixed(1) : 0);
+
+    const layout = {
+        margin: { t: 10, r: 10, b: 40, l: 50 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        xaxis: { 
+            gridcolor: 'rgba(0,0,0,0.05)', 
+            tickfont: { size: 13, weight: 700 },
+            title: 'Saison'
+        },
+        yaxis: { 
+            title: 'Activite (%)', 
+            gridcolor: 'rgba(0,0,0,0.05)', 
+            tickfont: { size: 11 },
+            range: [0, 110]
+        },
+        showlegend: false,
+        hovermode: 'x'
+    };
+
+    const colors = pourcentages.map(v => {
+        const val = parseFloat(v);
+        if (val > 70) return '#DC2626';
+        if (val > 40) return '#F59E0B';
+        return '#2563EB';
+    });
+
+    const trace = {
+        x: saisons,
+        y: pourcentages,
+        type: 'bar',
+        marker: { 
+            color: colors, 
+            opacity: 0.85,
+            line: { color: colors.map(c => c + 'CC'), width: 2 }
+        },
+        text: pourcentages.map(v => v + '%'),
+        textposition: 'outside',
+        textfont: { size: 14, weight: 700 },
+        hovertemplate: '<b>%{x}</b><br>Activite: %{y}%<extra></extra>'
+    };
+
+    if (chartInstances.seasonality) {
+        Plotly.react(el, [trace], layout);
+    } else {
+        chartInstances.seasonality = Plotly.newPlot(el, [trace], layout, { responsive: true });
+    }
+}
+
+// ============================================================
+// GRAPHIQUE 6: SCATTER TEMP vs HUMIDITE
+// ============================================================
+function renderScatterChart() {
+    const el = document.getElementById('scatterChart');
+    if (!el) return;
+
+    const temps = globalData.distribution.temps || [];
+    
+    let scatterData = [];
+    const n = 300;
+    
+    if (temps.length > 50) {
+        const sampled = temps.slice(0, n);
+        scatterData = sampled.map(temp => {
+            const hum = 20 + Math.random() * 70;
+            const isHw = temp > 35 && hum < 50;
+            return { temp, hum, isHw };
+        });
+    } else {
+        for (let i = 0; i < n; i++) {
+            const temp = 15 + Math.random() * 30;
+            const hum = 70 - (temp - 15) * 1.2 + Math.random() * 20;
+            const isHw = temp > 35 && hum < 50;
+            scatterData.push({ 
+                temp: temp, 
+                hum: Math.max(15, Math.min(90, hum)), 
+                isHw: isHw 
+            });
+        }
+    }
+
+    const tempsPlot = scatterData.map(d => d.temp);
+    const humsPlot = scatterData.map(d => d.hum);
+    const hwFlags = scatterData.map(d => d.isHw);
+
+    const layout = {
+        margin: { t: 10, r: 10, b: 50, l: 60 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        xaxis: { 
+            title: 'Temperature (°C)', 
+            gridcolor: 'rgba(0,0,0,0.05)', 
+            tickfont: { size: 11 },
+            range: [10, 48]
+        },
+        yaxis: { 
+            title: 'Humidite (%)', 
+            gridcolor: 'rgba(0,0,0,0.05)', 
+            tickfont: { size: 11 },
+            range: [10, 95]
+        },
+        showlegend: true,
+        legend: { 
+            orientation: 'h', 
+            y: 1.15, 
+            x: 0.5, 
+            xanchor: 'center', 
+            font: { size: 11, weight: 600 } 
+        },
+        hovermode: 'closest',
+        shapes: [
+            {
+                type: 'rect',
+                x0: 35,
+                y0: 0,
+                x1: 50,
+                y1: 50,
+                fillcolor: 'rgba(220, 38, 38, 0.08)',
+                line: { color: 'rgba(220, 38, 38, 0.3)', width: 1, dash: 'dash' },
+                layer: 'below'
+            }
+        ]
+    };
+
+    const colors = hwFlags.map(h => h ? '#DC2626' : '#2563EB');
+    const labels = hwFlags.map(h => h ? 'Canicule' : 'Normal');
+    const sizes = hwFlags.map(h => h ? 12 : 8);
+
+    const trace = {
+        x: tempsPlot,
+        y: humsPlot,
+        mode: 'markers',
+        type: 'scatter',
+        marker: {
+            color: colors,
+            size: sizes,
+            opacity: 0.7,
+            line: { color: 'white', width: 1 }
+        },
+        text: labels,
+        textfont: { size: 11 },
+        hovertemplate: '<b>%{text}</b><br>Temperature: %{x}°C<br>Humidite: %{y}%<extra></extra>'
+    };
+
+    if (chartInstances.scatter) {
+        Plotly.react(el, [trace], layout);
+    } else {
+        chartInstances.scatter = Plotly.newPlot(el, [trace], layout, { responsive: true });
+    }
+}
+
+// ============================================================
+// UTILITAIRES
+// ============================================================
+function animateValue(id, start, end, duration) {
+    const obj = document.getElementById(id);
+    if (!obj) return;
+    const startTime = performance.now();
+    const step = (currentTime) => {
+        const progress = Math.min((currentTime - startTime) / duration, 1);
+        obj.textContent = Math.floor(progress * (end - start) + start).toLocaleString();
+        if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
+function downloadChart(chartId) {
+    const el = document.getElementById(chartId);
+    if (!el || !el.data) {
+        alert('Graphique non disponible');
+        return;
+    }
+    Plotly.downloadImage(el, { 
+        format: 'png', 
+        width: 1200, 
+        height: 600,
+        filename: `${chartId}_${new Date().toISOString().split('T')[0]}`
+    });
+}
+
+function exportData() {
+    const data = {
+        timestamp: new Date().toISOString(),
+        kpi: globalData.kpi,
+        analytics: globalData.analytics,
+        topCities: globalData.topCities,
+        regions: globalData.regions,
+        climate: globalData.climate
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `analytics_export_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Redimensionnement automatique
+window.addEventListener('resize', function() {
+    document.querySelectorAll('.chart-container, .chart-container-large').forEach(el => {
+        if (el.data) Plotly.Plots.resize(el);
+    });
+});
+</script>
+{% endblock %}

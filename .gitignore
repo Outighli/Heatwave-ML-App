@@ -1,0 +1,27 @@
+# Environnement virtuel
+venv/
+.env
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+
+# Base de données locale
+*.sqlite
+*.db
+database/*.sqlite
+
+# Jupyter
+jupyter/.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

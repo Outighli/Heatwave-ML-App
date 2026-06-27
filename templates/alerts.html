@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% set active_page = 'alerts' %}
+{% block title %}Centre d'Alertes - HeatWave AI{% endblock %}
+
+{% block content %}
+<!-- Top Bar -->
+<div class="top-bar">
+    <div>
+        <h1 class="page-title">Centre d'Alertes</h1>
+        <p class="page-subtitle">Surveillance et gestion des alertes canicules en temps réel</p>
+    </div>
+    <div class="top-bar-actions">
+        <button class="btn btn-danger" onclick="refreshAlerts()">
+            <i class="fas fa-sync-alt"></i>
+            Actualiser
+        </button>
+    </div>
+</div>
+
+<!-- Alert Summary Cards -->
+<div class="kpi-grid" style="margin-bottom: 24px;">
+    <div class="kpi-card animate-fade-in">
+        <div class="kpi-icon red">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="kpi-value" id="alertActive">0</div>
+        <div class="kpi-label">Alertes Actives</div>
+        <div class="kpi-trend up">
+            <i class="fas fa-fire"></i>
+            <span>En cours</span>
+        </div>
+    </div>
+    <div class="kpi-card animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="kpi-icon orange">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="kpi-value" id="alertPopulation">0</div>
+        <div class="kpi-label">Population Vulnérable</div>
+        <div class="kpi-trend up">
+            <i class="fas fa-arrow-up"></i>
+            <span>En alerte</span>
+        </div>
+    </div>
+    <div class="kpi-card animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="kpi-icon blue">
+            <i class="fas fa-paper-plane"></i>
+        </div>
+        <div class="kpi-value" id="alertNotifications">0</div>
+        <div class="kpi-label">Notifications Envoyées</div>
+        <div class="kpi-trend neutral">
+            <i class="fas fa-minus"></i>
+            <span>Stable</span>
+        </div>
+    </div>
+    <div class="kpi-card animate-fade-in" style="animation-delay: 0.3s;">
+        <div class="kpi-icon green">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="kpi-value">156</div>
+        <div class="kpi-label">Alertes Résolues</div>
+        <div class="kpi-trend down">
+            <i class="fas fa-arrow-up"></i>
+            <span>+12 cette semaine</span>
+        </div>
+    </div>
+</div>
+
+<!-- Active Alerts Section -->
+<div class="glass-card animate-fade-in" style="animation-delay: 0.3s; margin-bottom: 24px;">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-bell"></i>
+            Alertes Actives — <span id="alertCount" style="color: var(--danger); font-weight: 700;">0</span>
+        </div>
+        <div class="card-actions">
+            <button class="card-action-btn" onclick="refreshAlerts()"><i class="fas fa-sync-alt"></i></button>
+        </div>
+    </div>
+    <div id="activeAlerts">
+        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
+            <div>Chargement des alertes...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Settings + History -->
+<div class="dashboard-grid-2">
+    <div class="glass-card animate-fade-in-left" style="animation-delay: 0.4s;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-cog"></i>
+                Configuration des Notifications
+            </div>
+        </div>
+        <div style="padding: 8px 0;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background: rgba(37, 99, 235, 0.1); display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">Notifications Email</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Alertes envoyées par email</div>
+                    </div>
+                </div>
+                <input type="checkbox" checked style="width: 44px; height: 24px; accent-color: var(--primary); cursor: pointer;">
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background: rgba(245, 158, 11, 0.1); display: flex; align-items: center; justify-content: center; color: var(--warning);">
+                        <i class="fas fa-sms"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">Notifications SMS</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Alertes envoyées par SMS</div>
+                    </div>
+                </div>
+                <input type="checkbox" checked style="width: 44px; height: 24px; accent-color: var(--primary); cursor: pointer;">
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background: rgba(16, 185, 129, 0.1); display: flex; align-items: center; justify-content: center; color: var(--success);">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">Push Mobile</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Notifications push sur l'app</div>
+                    </div>
+                </div>
+                <input type="checkbox" checked style="width: 44px; height: 24px; accent-color: var(--primary); cursor: pointer;">
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background: rgba(220, 38, 38, 0.1); display: flex; align-items: center; justify-content: center; color: var(--danger);">
+                        <i class="fas fa-phone"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">Appels Automatiques</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Alertes vocales pour urgences</div>
+                    </div>
+                </div>
+                <input type="checkbox" style="width: 44px; height: 24px; accent-color: var(--primary); cursor: pointer;">
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-card animate-fade-in-right" style="animation-delay: 0.5s;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-history"></i>
+                Historique des Alertes
+            </div>
+            <div class="card-actions">
+                <button class="card-action-btn"><i class="fas fa-download"></i></button>
+            </div>
+        </div>
+        <div style="max-height: 320px; overflow-y: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Ville</th>
+                        <th>Niveau</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>22/06/2026</td>
+                        <td><strong>Marseille</strong></td>
+                        <td><span class="risk-badge high"><span class="risk-dot high"></span>Rouge</span></td>
+                        <td><span style="color: var(--danger); font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 4px;"></i>Active</span></td>
+                    </tr>
+                    <tr>
+                        <td>22/06/2026</td>
+                        <td><strong>Lyon</strong></td>
+                        <td><span class="risk-badge high"><span class="risk-dot high"></span>Rouge</span></td>
+                        <td><span style="color: var(--danger); font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 4px;"></i>Active</span></td>
+                    </tr>
+                    <tr>
+                        <td>22/06/2026</td>
+                        <td><strong>Nice</strong></td>
+                        <td><span class="risk-badge medium"><span class="risk-dot medium"></span>Orange</span></td>
+                        <td><span style="color: var(--danger); font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 4px;"></i>Active</span></td>
+                    </tr>
+                    <tr>
+                        <td>21/06/2026</td>
+                        <td>Paris</td>
+                        <td><span class="risk-badge medium"><span class="risk-dot medium"></span>Orange</span></td>
+                        <td><span style="color: var(--success);"><i class="fas fa-check" style="margin-right: 4px;"></i>Résolue</span></td>
+                    </tr>
+                    <tr>
+                        <td>20/06/2026</td>
+                        <td>Toulouse</td>
+                        <td><span class="risk-badge low"><span class="risk-dot low"></span>Vert</span></td>
+                        <td><span style="color: var(--success);"><i class="fas fa-check" style="margin-right: 4px;"></i>Résolue</span></td>
+                    </tr>
+                    <tr>
+                        <td>19/06/2026</td>
+                        <td>Montpellier</td>
+                        <td><span class="risk-badge high"><span class="risk-dot high"></span>Rouge</span></td>
+                        <td><span style="color: var(--success);"><i class="fas fa-check" style="margin-right: 4px;"></i>Résolue</span></td>
+                    </tr>
+                    <tr>
+                        <td>18/06/2026</td>
+                        <td>Bordeaux</td>
+                        <td><span class="risk-badge medium"><span class="risk-dot medium"></span>Orange</span></td>
+                        <td><span style="color: var(--success);"><i class="fas fa-check" style="margin-right: 4px;"></i>Résolue</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadAlerts();
+});
+
+async function loadAlerts() {
+    try {
+        const res = await fetch('/api/alerts');
+        const alerts = await res.json();
+        renderAlerts(alerts);
+        updateAlertStats(alerts);
+    } catch(e) {
+        console.error('Erreur chargement alertes:', e);
+        document.getElementById('activeAlerts').innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 12px;"></i>
+                <div>Impossible de charger les alertes</div>
+            </div>
+        `;
+    }
+}
+
+function renderAlerts(alerts) {
+    const container = document.getElementById('activeAlerts');
+    document.getElementById('alertCount').textContent = alerts.length;
+
+    if (alerts.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--success);">
+                <i class="fas fa-check-circle" style="font-size: 32px; margin-bottom: 12px;"></i>
+                <div style="font-size: 16px; font-weight: 600;">Aucune alerte active</div>
+                <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Toutes les villes sont en conditions normales</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = alerts.map((alert, i) => `
+        <div class="alert-card ${alert.risk_level}" style="animation-delay: ${i * 0.1}s;">
+            <div class="alert-icon ${alert.risk_level}">
+                <i class="fas ${alert.risk_level === 'high' ? 'fa-fire' : alert.risk_level === 'medium' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+            </div>
+            <div class="alert-content">
+                <div class="alert-title">${alert.city} — ${alert.risk_level === 'high' ? 'Alerte Rouge' : 'Alerte Orange'} Canicule</div>
+                <div class="alert-message">${alert.message}</div>
+                <div class="alert-meta">
+                    <span><i class="fas fa-thermometer-full"></i> ${alert.temp_max}°C</span>
+                    <span><i class="fas fa-map-marker-alt"></i> ${alert.region}</span>
+                    <span><i class="fas fa-users"></i> ${alert.population_vulnerable.toLocaleString()} vulnérables</span>
+                    <span><i class="fas fa-clock"></i> ${alert.date}</span>
+                </div>
+                <div class="alert-actions">
+                    <button class="btn btn-danger btn-sm" onclick="sendAlert('${alert.city}', 'email')">
+                        <i class="fas fa-envelope"></i> Email
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="sendAlert('${alert.city}', 'sms')">
+                        <i class="fas fa-sms"></i> SMS
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="resolveAlert(${alert.id})">
+                        <i class="fas fa-check"></i> Marquer résolu
+                    </button>
+                </div>
+            </div>
+            <div class="risk-badge ${alert.risk_level}" style="flex-shrink: 0;">
+                <span class="risk-dot ${alert.risk_level}"></span>
+                ${alert.risk_level === 'high' ? 'Rouge' : 'Orange'}
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateAlertStats(alerts) {
+    document.getElementById('alertActive').textContent = alerts.length;
+
+    const totalPop = alerts.reduce((sum, a) => sum + (a.population_vulnerable || 0), 0);
+    if (totalPop >= 1000000) {
+        document.getElementById('alertPopulation').textContent = (totalPop / 1000000).toFixed(1) + 'M';
+    } else {
+        document.getElementById('alertPopulation').textContent = (totalPop / 1000).toFixed(0) + 'K';
+    }
+
+    document.getElementById('alertNotifications').textContent = (alerts.length * 280 + 156).toLocaleString();
+}
+
+function refreshAlerts() {
+    document.getElementById('activeAlerts').innerHTML = `
+        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
+            <div>Actualisation...</div>
+        </div>
+    `;
+    loadAlerts();
+}
+
+function sendAlert(city, type) {
+    alert(`Alerte ${type.toUpperCase()} envoyée pour ${city} (simulation)`);
+}
+
+function resolveAlert(id) {
+    alert(`Alerte #${id} marquée comme résolue (simulation)`);
+}
+</script>
+{% endblock %}

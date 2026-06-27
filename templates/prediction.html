@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+{% set active_page = 'prediction' %}
+{% block title %}Prediction IA - HeatWave AI{% endblock %}
+
+{% block content %}
+<!-- Top Bar -->
+<div class="top-bar">
+    <div>
+        <h1 class="page-title">Prediction IA</h1>
+        <p class="page-subtitle">Predire l'apparition d'une canicule</p>
+    </div>
+</div>
+
+<div class="dashboard-grid-2">
+    <!-- Formulaire -->
+    <div class="glass-card animate-fade-in-left">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-sliders-h"></i>
+                Parametres de Prediction
+            </div>
+        </div>
+
+        <form id="predictionForm" onsubmit="handlePredict(event)">
+            <div class="form-group">
+                <label class="form-label">Ville</label>
+                <select class="form-select" id="city" required>
+                    <option value="">Selectionner une ville...</option>
+                </select>
+                <div id="dataSourceBadge" style="display:none; margin-top:6px; font-size:12px;
+                     padding:4px 10px; border-radius:20px; display:inline-flex;
+                     align-items:center; gap:6px;"></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Temperature Max (°C)</label>
+                    <input type="number" class="form-input" id="temp_max"
+                           step="0.1" placeholder="Ex: 35.5" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Temperature Min (°C)</label>
+                    <input type="number" class="form-input" id="temp_min"
+                           step="0.1" placeholder="Ex: 22.0" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Humidite (%)</label>
+                    <input type="number" class="form-input" id="humidity"
+                           min="0" max="100" placeholder="Ex: 65" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Vent (km/h)</label>
+                    <input type="number" class="form-input" id="wind_kph"
+                           step="0.1" placeholder="Ex: 15.5" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Precipitations (mm)</label>
+                <input type="number" class="form-input" id="precip_mm"
+                       step="0.1" placeholder="Ex: 0.0" required>
+            </div>
+
+            <button type="button" class="btn btn-secondary btn-block"
+                    style="margin-bottom:12px;" onclick="loadCurrentWeather()">
+                <i class="fas fa-cloud-sun"></i> Utiliser les donnees du dataset
+            </button>
+
+            <button type="submit" class="btn btn-primary btn-lg btn-block" id="predictBtn">
+                <i class="fas fa-brain"></i> Predire la Canicule
+            </button>
+        </form>
+    </div>
+
+    <!-- Resultats -->
+    <div id="resultSection" style="display:none;">
+        <div class="glass-card animate-scale-in">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Resultat de la Prediction
+                </div>
+                <button class="card-action-btn" onclick="resetResults()" aria-label="Fermer">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="text-center" style="padding:20px 0;">
+                <!-- Gauge -->
+                <div class="gauge-container" style="margin-bottom:20px;">
+                    <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                        <circle class="gauge-bg" cx="100" cy="100" r="80"/>
+                        <circle class="gauge-fill" id="gaugeFill" cx="100" cy="100" r="80"
+                                stroke-dasharray="502.65" stroke-dashoffset="502.65"/>
+                    </svg>
+                    <div class="gauge-text">
+                        <div class="gauge-value" id="gaugeValue">0%</div>
+                        <div class="gauge-label">Probabilite</div>
+                    </div>
+                </div>
+
+                <div id="predictionResult"
+                     style="font-size:24px; font-weight:800; margin-bottom:12px;"></div>
+                <div id="predictionRisk" style="margin-bottom:16px;"></div>
+                <div class="ia-recommendation" id="predictionRecommendation"></div>
+
+                <!-- Temperature predite J+3 -->
+                <div id="tempJ3Block" style="margin-top:18px; padding:12px 20px;
+                        background:rgba(37,99,235,0.06); border-radius:10px;
+                        border:1px solid rgba(37,99,235,0.15);">
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">
+                        <i class="fas fa-thermometer-half"
+                           style="margin-right:6px; color:var(--primary);"></i>
+                        Temperature maximale predite J+3
+                    </div>
+                    <div id="tempJ3Value"
+                         style="font-size:28px; font-weight:800; color:var(--primary);">---</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let allCities = [];
+let modelInfo = {};
+
+document.addEventListener('DOMContentLoaded', async function () {
+    await loadCities();
+});
+
+async function loadCities() {
+    try {
+        const res = await fetch('/api/cities');
+        allCities = await res.json();
+        const sel = document.getElementById('city');
+        sel.innerHTML = '<option value="">Selectionner une ville...</option>' +
+            allCities.map(c => `<option value="${c}">${c}</option>`).join('');
+        sel.addEventListener('change', () => {
+            if (sel.value) loadCityWeather(sel.value);
+        });
+        if (allCities.length > 0) {
+            sel.value = allCities[0];
+            await loadCityWeather(allCities[0]);
+        }
+    } catch (e) {
+        console.error('Erreur chargement villes:', e);
+    }
+}
+
+async function loadCityWeather(city) {
+    if (!city) return;
+    try {
+        const res = await fetch(`/api/weather/${encodeURIComponent(city)}`);
+        const data = await res.json();
+
+        document.getElementById('temp_max').value = data.temp_max || '';
+        document.getElementById('temp_min').value = data.temp_min || '';
+        document.getElementById('humidity').value = data.humidity || '';
+        document.getElementById('wind_kph').value = data.wind_kph || '';
+        document.getElementById('precip_mm').value = data.precip_mm ?? 0;
+
+        const badge = document.getElementById('dataSourceBadge');
+        badge.style.display = 'inline-flex';
+        if (data.date && data.date !== new Date().toISOString().slice(0, 10)) {
+            badge.style.background = 'rgba(37,99,235,0.1)';
+            badge.style.color = 'var(--primary)';
+            badge.innerHTML = `<i class="fas fa-database"></i> Donnees reelles du dataset — ${data.date}`;
+        } else {
+            badge.style.background = 'rgba(245,158,11,0.1)';
+            badge.style.color = '#d97706';
+            badge.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Donnees simulees`;
+        }
+    } catch (e) {
+        console.error('Erreur chargement meteo:', e);
+    }
+}
+
+async function loadCurrentWeather() {
+    const city = document.getElementById('city').value;
+    if (!city) { alert('Veuillez d\'abord selectionner une ville'); return; }
+    await loadCityWeather(city);
+}
+
+function handlePredict(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('predictBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Prediction en cours...';
+
+    const data = {
+        city: document.getElementById('city').value,
+        temp_max: parseFloat(document.getElementById('temp_max').value) || 0,
+        temp_min: parseFloat(document.getElementById('temp_min').value) || 0,
+        humidity: parseFloat(document.getElementById('humidity').value) || 50,
+        wind_kph: parseFloat(document.getElementById('wind_kph').value) || 10,
+        precip_mm: parseFloat(document.getElementById('precip_mm').value) || 0,
+    };
+
+    fetch('/api/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    })
+    .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+    })
+    .then(result => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-brain"></i> Predire la Canicule';
+        showResults(result);
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-brain"></i> Predire la Canicule';
+        console.error('Erreur prediction:', err);
+        alert('Erreur lors de la prediction. Verifiez que le backend est demarre.');
+    });
+}
+
+function showResults(result) {
+    document.getElementById('resultSection').style.display = 'block';
+
+    // GAUGE
+    const circumference = 2 * Math.PI * 80;
+    const offset = circumference - (result.probability / 100) * circumference;
+    const fill = document.getElementById('gaugeFill');
+    fill.style.strokeDashoffset = circumference;
+    setTimeout(() => {
+        fill.style.strokeDashoffset = offset;
+        fill.className = 'gauge-fill ' + (result.risk_level || 'low');
+    }, 100);
+
+    let current = 0;
+    const target = result.probability;
+    const iv = setInterval(() => {
+        current += target / 50;
+        if (current >= target) { current = target; clearInterval(iv); }
+        document.getElementById('gaugeValue').textContent = current.toFixed(1) + '%';
+    }, 30);
+
+    // RESULTAT PRINCIPAL
+    const resEl = document.getElementById('predictionResult');
+    resEl.textContent = result.prediction || '---';
+    resEl.style.color = result.is_heatwave ? 'var(--danger)' : 'var(--success)';
+    if (result.is_heatwave && result.probability > 75) {
+        resEl.style.animation = 'pulse 1.5s ease-in-out infinite';
+        document.querySelector('.gauge-container').style.boxShadow = '0 0 40px rgba(220,38,38,0.3)';
+    } else {
+        resEl.style.animation = '';
+        document.querySelector('.gauge-container').style.boxShadow = '';
+    }
+
+    // BADGE RISQUE
+    const riskTexts = { low: 'Faible', medium: 'Moyen', high: 'Eleve' };
+    document.getElementById('predictionRisk').innerHTML = `
+        <span class="risk-badge ${result.risk_level || 'low'}">
+            <span class="risk-dot ${result.risk_level || 'low'}"></span>
+            Risque ${riskTexts[result.risk_level] || 'Inconnu'}
+        </span>
+    `;
+
+    // RECOMMANDATION
+    document.getElementById('predictionRecommendation').innerHTML = `
+        <i class="fas fa-lightbulb" style="color:var(--primary); margin-right:8px;"></i>
+        ${result.recommendation || '---'}
+    `;
+
+    // TEMPERATURE J+3
+    const j3val = document.getElementById('tempJ3Value');
+    if (result.temp_j3 !== null && result.temp_j3 !== undefined) {
+        j3val.textContent = result.temp_j3.toFixed(1) + ' °C';
+        j3val.style.color = result.temp_j3 >= 35 ? 'var(--danger)' : 
+                            result.temp_j3 >= 30 ? '#d97706' : 'var(--primary)';
+    } else {
+        j3val.textContent = 'N/A';
+        j3val.style.color = 'var(--text-muted)';
+    }
+
+    document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function resetResults() {
+    document.getElementById('resultSection').style.display = 'none';
+    document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+{% endblock %}
