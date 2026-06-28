@@ -13,6 +13,32 @@ Université Hassan II de Casablanca.
 - Visualiser les données climatiques historiques (2010–2020)
 - Expliquer les prédictions du modèle IA (Feature Importance Random Forest)
 
+---
+
+## 🖥️ Interface de l'Application
+
+### Dashboard Principal
+![Dashboard](static/images/screens/dashboard.png)
+> Vue d'ensemble avec KPI, conditions météo par ville et carte mondiale
+
+### Prédiction IA
+![Prediction](static/images/screens/prediction.png)
+> Formulaire de prédiction avec jauge circulaire et Feature Importance
+
+### Analyse des Données
+![Analytics](static/images/screens/analytics.png)
+> EDA interactif — distributions, tendances climatiques, saisonnalité
+
+### Centre d'Alertes
+![Alerts](static/images/screens/alerts.png)
+> Alertes actives et notifications par ville et région
+
+### Rapports
+![Reports](static/images/screens/reports.png)
+> Génération et export PDF/CSV des statistiques détaillées
+
+---
+
 ## 📊 Données du Projet
 - **Observations** : 342 978
 - **Villes** : 100
@@ -23,15 +49,19 @@ Université Hassan II de Casablanca.
 - **Variable cible régression** : `temp_max_J3`
 - **Taux de canicule** : 5.16% (ratio 1:18)
 
+---
+
 ## 🤖 Modèles ML
 | Tâche | Modèle | Métrique | Valeur |
 |---|---|---|---|
 | Classification | Random Forest | ROC-AUC | 0.9959 |
 | Classification | Random Forest | F1-Score | 0.8476 |
+| Classification | Random Forest | Precision | 0.9095 |
+| Classification | Random Forest | Recall | 0.7937 |
 | Régression | XGBoost | MAE | 2.332°C |
+| Régression | XGBoost | RMSE | 3.199°C |
 | Régression | XGBoost | R² | 0.8899 |
 
-## 🏗️ Architecture
 PROJET_ML/
 
 ├── app.py                          # Application Flask principale
@@ -48,7 +78,19 @@ PROJET_ML/
 
 │   │   └── style.css              # Styles Glassmorphism + Light Mode
 
-│   └── images/                    # Images et assets
+│   └── images/
+
+│       └── screens/               # Screenshots de l'interface
+
+│           ├── dashboard.png
+
+│           ├── prediction.png
+
+│           ├── analytics.png
+
+│           ├── alerts.png
+
+│           └── reports.png
 
 ├── templates/
 
@@ -89,8 +131,10 @@ PROJET_ML/
 ├── heatwave_merged.parquet    # Dataset fusionné nettoyé
 
 └── city_temperature.csv       # Source brute Kaggle
+---
 
-## 🚀 Installation
+## 🚀 Installation Locale
+
 ```bash
 # 1. Cloner le projet
 git clone <url_du_projet>
@@ -112,6 +156,135 @@ pip install -r requirements.txt
 python app.py
 ```
 
+---
+
+## ☁️ Déploiement AWS EC2
+
+### 🔗 Application en ligne
+**URL de production** : `http://<adresse-ip-publique-ec2>:5000`
+
+> Remplacer `<adresse-ip-publique-ec2>` par l'IP publique de votre instance
+
+---
+
+### Étapes du Déploiement
+
+#### 1. Création d'une instance Amazon EC2
+Création d'une machine virtuelle Ubuntu sur Amazon Web Services 
+pour héberger l'application.
+Type     : t2.micro (Free Tier)
+
+OS       : Ubuntu Server 22.04 LTS
+
+Stockage : 20 GB SSD
+
+Ports    : 22 (SSH), 5000 (Flask), 80 (HTTP)
+#### 2. Configuration de l'environnement serveur
+Mise à jour du système et installation des outils nécessaires.
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git python3 python3-pip python3-venv
+```
+
+#### 3. Récupération du projet
+Clonage du projet depuis GitHub vers l'instance EC2.
+```bash
+git clone <url_du_projet>
+cd PROJET_ML
+```
+
+#### 4. Gestion des fichiers volumineux avec Git LFS
+Installation de Git LFS pour récupérer les modèles `.pkl` 
+et les datasets volumineux.
+```bash
+sudo apt install git-lfs -y
+git lfs install
+git lfs pull
+```
+
+#### 5. Création de l'environnement virtuel Python
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+#### 6. Installation des dépendances
+```bash
+pip install -r requirements.txt
+```
+
+#### 7. Chargement et vérification des modèles
+Vérification du chargement des modèles, encodeurs, scaler et dataset.
+```bash
+python -c "
+import joblib, json
+clf = joblib.load('model/best_classifier.pkl')
+reg = joblib.load('model/best_regressor.pkl')
+print('✅ Classificateur :', type(clf).__name__)
+print('✅ Régresseur     :', type(reg).__name__)
+"
+```
+
+#### 8. Déploiement de l'application Flask
+Lancement et vérification via l'adresse IP publique.
+```bash
+python app.py
+# Accès : http://<ip-publique-ec2>:5000
+```
+
+#### 9. Déploiement en production avec Gunicorn
+Utilisation de Gunicorn pour un environnement stable et production.
+```bash
+pip install gunicorn
+gunicorn --workers 3 --bind 0.0.0.0:5000 app:app
+```
+
+#### 10. Configuration d'un service système (systemd)
+Service permettant le démarrage automatique et le redémarrage en cas d'arrêt.
+```bash
+sudo nano /etc/systemd/system/heatwave.service
+```
+```ini
+[Unit]
+Description=HeatWave AI Flask App
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/PROJET_ML
+Environment="PATH=/home/ubuntu/PROJET_ML/venv/bin"
+ExecStart=/home/ubuntu/PROJET_ML/venv/bin/gunicorn \
+          --workers 3 \
+          --bind 0.0.0.0:5000 \
+          app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable heatwave
+sudo systemctl start heatwave
+sudo systemctl status heatwave
+```
+
+#### 11. Tests de validation
+Vérification de l'ensemble des fonctionnalités.
+```bash
+# Test API santé
+curl http://localhost:5000/api/health
+
+# Test prédiction
+curl -X POST http://localhost:5000/api/predict \
+  -H "Content-Type: application/json" \
+  -d '{"city": "Paris", "temp_max": 38, "humidity": 25}'
+```
+
+#### 12. Accès à l'application
+🌍 URL publique : http://51.21.149.17:5000
+---
+
 ## 📄 Pages
 1. **Dashboard** : Vue d'ensemble avec KPI, conditions météo par ville,
    prédiction IA temps réel et carte mondiale des températures
@@ -123,19 +296,25 @@ python app.py
    historique des alertes par ville et région
 5. **Rapports** : Génération et export PDF/CSV des statistiques détaillées
 
+---
+
 ## 🔧 Technologies
 - **Backend** : Python 3.12 / Flask
 - **Frontend** : HTML5, CSS3, JavaScript
 - **ML** : scikit-learn, XGBoost, LightGBM, imbalanced-learn (SMOTE)
 - **Data** : pandas, numpy, pyarrow (parquet)
 - **Interprétabilité** : SHAP, Feature Importance
-- **Déploiement** : Flask (local), compatible Render/Railway
+- **Déploiement** : AWS EC2, Gunicorn, systemd
+
+---
 
 ## 🎨 Design
 - **Style** : Glassmorphism + Light Mode
 - **Couleurs** : Bleu #2563EB, Orange #F59E0B, Rouge #DC2626
 - **Animations** : Transitions fluides et modernes
 - **Responsive** : Adapté aux écrans de toutes tailles
+
+---
 
 ## 👥 Équipe
 - **Ouarrak Layla**
@@ -144,3 +323,7 @@ python app.py
 **Encadrants** : Pr. BENLAHMAR ELHABIB | Pr. Oussama Kaich
 
 **Année Universitaire** : 2025–2026
+
+---
+
+## 🏗️ Architecture
