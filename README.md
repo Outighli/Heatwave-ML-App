@@ -152,20 +152,24 @@ python app.py
 ---
 ## 🖥️ Interface de l'Application
 
-### Dashboard
-![Dashboard](static/images/screens/dashboard.png)
+### Dashboard Principal
+![Dashboard](static/css/images/screens/dashboard.png)
 
 ### Prédiction IA
-![Prediction](static/images/screens/prediction.png)
+![Prediction](static/css/images/screens/prediction.png)
 
 ### Analyse des Données
-![Analytics](static/images/screens/analytics.png)
+![Analytics](static/css/images/screens/analytics.png)
 
 ### Centre d'Alertes
-![Alerts](static/images/screens/alerts.png)
+![Alerts](static/css/images/screens/alerts.png)
 
 ### Rapports
-![Reports](static/images/screens/reports.png)
+![Reports](static/css/images/screens/reports.png)
+
+---
+## 🔗 Application en ligne
+**URL** : [http://51.21.149.17:5000](http://51.21.149.17:5000)
 
 ---
 ## 🔗 Application en ligne
