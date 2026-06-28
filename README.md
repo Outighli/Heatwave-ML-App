@@ -135,7 +135,9 @@ python app.py
 
 
 ####  Accès à l'application
-🌍 URL publique : http://51.21.149.17:5000
+🌍 
+## 🔗 Application en ligne
+**URL** : [http://51.21.149.17:5000](http://51.21.149.17:5000)
 
 
 ## 📄 Pages
@@ -188,8 +190,9 @@ python app.py
 ---
 
 ## 👥 Équipe
-- **Ouarrak Layla**
 - **Outighli Sanae**
+- **Ouarrak Layla**
+
 
 **Encadrants** : Pr. BENLAHMAR ELHABIB | Pr. Oussama Kaich
 
