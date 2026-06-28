@@ -150,6 +150,26 @@ python app.py
 5. **Rapports** : Génération et export PDF/CSV des statistiques détaillées
 
 ---
+## 🖥️ Interface de l'Application
+
+### Dashboard
+![Dashboard](static/images/screens/dashboard.png)
+
+### Prédiction IA
+![Prediction](static/images/screens/prediction.png)
+
+### Analyse des Données
+![Analytics](static/images/screens/analytics.png)
+
+### Centre d'Alertes
+![Alerts](static/images/screens/alerts.png)
+
+### Rapports
+![Reports](static/images/screens/reports.png)
+
+---
+## 🔗 Application en ligne
+**URL** : [http://51.21.149.17:5000](http://51.21.149.17:5000)
 
 ## 🔧 Technologies
 - **Backend** : Python 3.12 / Flask
