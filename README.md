@@ -136,7 +136,7 @@ python app.py
 
 ####  Accès à l'application
 🌍 URL publique : http://51.21.149.17:5000
----
+
 
 ## 📄 Pages
 1. **Dashboard** : Vue d'ensemble avec KPI, conditions météo par ville,
@@ -167,13 +167,7 @@ python app.py
 ### Rapports
 ![Reports](static/css/images/screens/reports.png)
 
----
-## 🔗 Application en ligne
-**URL** : [http://51.21.149.17:5000](http://51.21.149.17:5000)
 
----
-## 🔗 Application en ligne
-**URL** : [http://51.21.149.17:5000](http://51.21.149.17:5000)
 
 ## 🔧 Technologies
 - **Backend** : Python 3.12 / Flask
