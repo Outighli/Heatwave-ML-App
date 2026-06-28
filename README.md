@@ -1,51 +1,100 @@
 # 🌡️ HeatWave AI - Système Intelligent de Prédiction et d'Alerte Précoce des Canicules
 
 ## 📋 Description
-
-Système de Machine Learning pour la prédiction et l'alerte précoce des canicules à partir de données climatiques historiques (2010-2020).
+Système de Machine Learning pour la prédiction et l'alerte précoce des canicules 
+à partir de données climatiques historiques (2010-2020), développé dans le cadre 
+du Master Intelligence Artificielle — Faculté des Sciences Ben M'Sick, 
+Université Hassan II de Casablanca.
 
 ## 🎯 Objectifs
-
-- Prédire l'apparition des canicules
-- Alerter les populations vulnérables
-- Visualiser les données climatiques
-- Expliquer les prédictions du modèle IA (SHAP)
+- Prédire l'apparition des canicules (Classification binaire is_heatwave)
+- Prédire la température maximale à J+3 (Régression temp_max_J3)
+- Alerter les populations vulnérables via un Centre d'Alertes
+- Visualiser les données climatiques historiques (2010–2020)
+- Expliquer les prédictions du modèle IA (Feature Importance Random Forest)
 
 ## 📊 Données du Projet
-
-- **Observations** : 343 510
-- **Villes** : 101
+- **Observations** : 342 978
+- **Villes** : 100
 - **Régions** : 7
-- **Période** : 2010-2020
-- **Variables explicatives** : 36
-- **Variable cible** : `is_heatwave`
+- **Période** : 2010–2020
+- **Features** : 13 variables construites par feature engineering
+- **Variable cible classification** : `is_heatwave` (seuil 35°C OMM)
+- **Variable cible régression** : `temp_max_J3`
+- **Taux de canicule** : 5.16% (ratio 1:18)
+
+## 🤖 Modèles ML
+| Tâche | Modèle | Métrique | Valeur |
+|---|---|---|---|
+| Classification | Random Forest | ROC-AUC | 0.9959 |
+| Classification | Random Forest | F1-Score | 0.8476 |
+| Régression | XGBoost | MAE | 2.332°C |
+| Régression | XGBoost | R² | 0.8899 |
 
 ## 🏗️ Architecture
+PROJET_ML/
 
-```
-heatwave_prediction_system/
-├── app.py                  # Application Flask principale
-├── requirements.txt        # Dépendances Python
+├── app.py                          # Application Flask principale
+
+├── requirements.txt                # Dépendances Python
+
+├── README.md                       # Documentation
+
+├── .gitignore
+
 ├── static/
+
 │   ├── css/
-│   │   └── style.css      # Styles Glassmorphism + Light Mode
-│   ├── js/                # Scripts JavaScript (si nécessaire)
-│   └── images/            # Images et assets
+
+│   │   └── style.css              # Styles Glassmorphism + Light Mode
+
+│   └── images/                    # Images et assets
+
 ├── templates/
-│   ├── base.html          # Template de base (layout)
-│   ├── dashboard.html     # Page 1 : Dashboard
-│   ├── prediction.html    # Page 2 : Prédiction IA
-│   ├── analytics.html     # Page 3 : Analyse des Données
-│   └── alerts.html        # Page 4 : Centre d'Alertes
-├── model/                 # Modèles ML sauvegardés
-└── database/              # Données et datasets
-```
+
+│   ├── base.html                  # Template de base (layout)
+
+│   ├── dashboard.html             # Page 1 : Dashboard
+
+│   ├── prediction.html            # Page 2 : Prédiction IA
+
+│   ├── analytics.html             # Page 3 : Analyse des Données
+
+│   ├── alerts.html                # Page 4 : Centre d'Alertes
+
+│   └── reports.html               # Page 5 : Rapports
+
+├── model/
+
+│   ├── best_classifier.pkl        # Random Forest (classification)
+
+│   ├── best_regressor.pkl         # XGBoost (régression J+3)
+
+│   ├── scaler.pkl                 # StandardScaler
+
+│   ├── le_region.pkl              # LabelEncoder régions
+
+│   ├── le_city.pkl                # LabelEncoder villes
+
+│   ├── model_metadata.json        # Métriques et features
+
+│   └── feature_engineering_metadata.json
+
+└── database/
+
+├── heatwave_features.parquet  # Dataset enrichi (features)
+
+├── heatwave_final.parquet     # Dataset avec is_heatwave
+
+├── heatwave_merged.parquet    # Dataset fusionné nettoyé
+
+└── city_temperature.csv       # Source brute Kaggle
 
 ## 🚀 Installation
-
 ```bash
 # 1. Cloner le projet
-cd heatwave_prediction_system
+git clone <url_du_projet>
+cd PROJET_ML
 
 # 2. Créer l'environnement virtuel
 python -m venv venv
@@ -63,24 +112,35 @@ pip install -r requirements.txt
 python app.py
 ```
 
-## 🎨 Design
-
-- **Style** : Glassmorphism + Light Mode
-- **Couleurs** : Bleu #2563EB, Orange #F59E0B, Rouge #DC2626
-- **Animations** : Modernes avec transitions fluides
-- **Responsive** : Adapté aux écrans de toutes tailles
-
 ## 📄 Pages
-
-1. **Dashboard** : Vue d'ensemble avec KPI, météo, prédiction IA, carte mondiale, graphiques
-2. **Prédiction IA** : Formulaire de prédiction avec jauge circulaire et explication SHAP
-3. **Analyse des Données** : Distribution, corrélations, évolution climatique, statistiques régionales
-4. **Centre d'Alertes** : Alertes actives, notifications, historique, paramètres
+1. **Dashboard** : Vue d'ensemble avec KPI, conditions météo par ville,
+   prédiction IA temps réel et carte mondiale des températures
+2. **Prédiction IA** : Formulaire de prédiction avec jauge circulaire,
+   probabilité de canicule, température J+3 et Feature Importance
+3. **Analyse des Données** : EDA interactif — distributions, tendances
+   climatiques, top villes, saisonnalité, relation Temp × Humidité
+4. **Centre d'Alertes** : Alertes actives, notifications Email/SMS/Push,
+   historique des alertes par ville et région
+5. **Rapports** : Génération et export PDF/CSV des statistiques détaillées
 
 ## 🔧 Technologies
-
-- **Backend** : Python / Flask
+- **Backend** : Python 3.12 / Flask
 - **Frontend** : HTML5, CSS3, JavaScript
-- **ML** : scikit-learn, SHAP
+- **ML** : scikit-learn, XGBoost, LightGBM, imbalanced-learn (SMOTE)
+- **Data** : pandas, numpy, pyarrow (parquet)
+- **Interprétabilité** : SHAP, Feature Importance
+- **Déploiement** : Flask (local), compatible Render/Railway
 
+## 🎨 Design
+- **Style** : Glassmorphism + Light Mode
+- **Couleurs** : Bleu #2563EB, Orange #F59E0B, Rouge #DC2626
+- **Animations** : Transitions fluides et modernes
+- **Responsive** : Adapté aux écrans de toutes tailles
 
+## 👥 Équipe
+- **Ouarrak Layla**
+- **Outighli Sanae**
+
+**Encadrants** : Pr. BENLAHMAR ELHABIB | Pr. Oussama Kaich
+
+**Année Universitaire** : 2025–2026
