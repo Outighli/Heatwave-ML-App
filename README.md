@@ -134,9 +134,8 @@ python app.py
 ---
 
 
-####  Accès à l'application
-🌍 
-## 🔗 Application en ligne
+####🌍  Accès à l'application en ligne
+
 **URL** : [http://51.21.149.17:5000](http://51.21.149.17:5000)
 
 
